@@ -18,9 +18,10 @@ let marc='';function answer(b){if(answered)return;answered=true;marc=b?b.textCon
  $('res').textContent=ok?'✅ Certa!':(b?'❌ Errada':'📖 Resposta');$('res').style.color=ok?'#1a9a4a':'#c62828';
  $('com').textContent=(ok?'':'Correta: '+cur.correta+'\n\n')+cur.comentario;$('com').style.whiteSpace='pre-line';$('fb').hidden=false;$('naosei').hidden=true;$('fb').scrollIntoView({behavior:'smooth'})}
 function stats(){const cs=Object.values(P.c),n=cs.reduce((s,c)=>s+c.n,0),ok=cs.reduce((s,c)=>s+c.ok,0),dom=cs.filter(c=>c.box>=3).length;
+ const H=(P.sim||[]).slice(-10).reverse().map(s=>`<div class=st><span>${new Date(s.d).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</span><b style="color:${s.n>=20?'#1a9a4a':'#c62828'}">${s.n}/30</b></div>`).join('')||'<p class=src>Nenhum simulado ainda.</p>';
  const per=[1,2,3,4].map(m=>{const ids=Q.filter(q=>q.modulo==m);const d=ids.filter(q=>P.c[q.id]&&P.c[q.id].box>=3).length;return `<div class=st><span>Módulo ${m}</span><b>${d}/${ids.length}</b></div>`}).join('');
- $('sbox').innerHTML=`<div class=st><span>Respostas dadas</span><b>${n}</b></div><div class=st><span>Questões vistas</span><b>${cs.length}/${Q.length}</b></div><div class=st><span>% de acerto</span><b>${n?Math.round(ok*100/n):0}%</b></div><div class=st><span>Dominadas (caixa ≥3)</span><b>${dom}</b></div>`+per}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x==b));$('quiz').hidden=b.dataset.v!='quiz';$('stats').hidden=b.dataset.v!='stats';if(b.dataset.v=='stats')stats()});
+ $('sbox').innerHTML=`<div class=st><span>Respostas dadas</span><b>${n}</b></div><div class=st><span>Questões vistas</span><b>${cs.length}/${Q.length}</b></div><div class=st><span>% de acerto</span><b>${n?Math.round(ok*100/n):0}%</b></div><div class=st><span>Dominadas (caixa ≥3)</span><b>${dom}</b></div>`+per+'<h3>Simulados</h3>'+H}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x==b));['quiz','sim','stats'].forEach(v=>$(v).hidden=b.dataset.v!=v);if(b.dataset.v=='stats')stats()});
 $('naosei').onclick=()=>answer(null);$('next').onclick=show;$('mod').onchange=()=>{localStorage.cnh_mod=mod();show()};
 $('reset').onclick=()=>{if(confirm('Apagar todo o progresso?')){P={t:0,c:{}};save();stats()}};
 (async()=>{load();[Q,PL]=await Promise.all([fetch('questions.json').then(r=>r.json()),fetch('placas.json').then(r=>r.json()).catch(()=>({}))]);
@@ -28,7 +29,33 @@ $('reset').onclick=()=>{if(confirm('Apagar todo o progresso?')){P={t:0,c:{}};sav
  $('mod').value=localStorage.cnh_mod||0;show()})();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 
-function iaText(){const q=cur,alts=[...document.querySelectorAll('.alt')].map((x,i)=>`${'ABCD'[i]}) ${x.textContent}`).join('\n');
- return `Estou estudando para a prova teórica da CNH. Me explique de forma simples esta questão do Banco Nacional de Questões:\n\nPergunta: ${q.enunciado}\n`+(q.codigo_placa?`Código da placa: ${q.codigo_placa}\n`:'')+`\nAlternativas:\n${alts}\n\nMinha resposta: ${marc}\nResposta correta: ${q.correta}\nComentário oficial: ${q.comentario}`}
+function iaText(q=cur,alts=[...document.querySelectorAll('#alts .alt')].map(x=>x.textContent),mk=marc){alts=alts.map((x,i)=>`${'ABCD'[i]}) ${x}`).join('\n');const marc_=mk;
+ return `Estou estudando para a prova teórica da CNH. Me explique de forma simples esta questão do Banco Nacional de Questões:\n\nPergunta: ${q.enunciado}\n`+(q.codigo_placa?`Código da placa: ${q.codigo_placa}\n`:'')+`\nAlternativas:\n${alts}\n\nMinha resposta: ${marc_}\nResposta correta: ${q.correta}\nComentário oficial: ${q.comentario}`}
 async function copy(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity=0;document.body.append(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}}
+function askIA(t,m){window.open('https://grok.com/?q='+encodeURIComponent(t),'_blank');copy(t);m.textContent='Pergunta copiada — se não aparecer, cole no Grok';m.hidden=false}
 $('ia').onclick=()=>{const t=iaText();window.open('https://grok.com/?q='+encodeURIComponent(t),'_blank');copy(t);const m=$('iamsg');m.textContent='Pergunta copiada — se não aparecer, cole no Grok';m.hidden=false};
+
+// ===== Simulado =====
+const SIM_PROP={1:8,2:4,3:13,4:5};let S=null;
+function simStart(){const qs=[];for(const m in SIM_PROP){qs.push(...shuf(Q.filter(q=>q.modulo==m)).slice(0,SIM_PROP[m]))}
+ S={qs:shuf(qs).map(q=>({q,alts:shuf([q.correta,...q.erradas]),r:null})),i:0};$('simStart').hidden=true;$('simRes').hidden=true;$('simRun').hidden=false;simShow()}
+function simShow(){const it=S.qs[S.i],q=it.q;$('simMeta').textContent=`Questão ${S.i+1}/30 · Módulo ${q.modulo} · ${q.nivel}`;$('simEnun').textContent=q.enunciado;
+ const codes=(q.codigo_placa||'').split(/,| e /).map(s=>s.trim()).filter(Boolean),src=codes.map(c=>PL[c]).find(Boolean),im=$('simPlaca');if(src){im.src=src;im.hidden=false}else im.hidden=true;
+ $('simAlts').innerHTML='';it.alts.forEach((t,k)=>{const b=document.createElement('button');b.className='alt'+(it.r===k?' sel':'');b.textContent=t;b.onclick=()=>{it.r=k;simShow()};$('simAlts').append(b)});
+ $('simPrev').disabled=S.i==0;$('simNext').disabled=S.i==29;
+ $('simDots').innerHTML=S.qs.map((x,k)=>`<span class="dot${x.r!==null?' f':''}${k==S.i?' c':''}" data-k=${k}>${k+1}</span>`).join('');
+ $('simDots').querySelectorAll('.dot').forEach(d=>d.onclick=()=>{S.i=+d.dataset.k;simShow()});scrollTo(0,0)}
+function simEnd(){const nr=S.qs.filter(x=>x.r===null).length;if(!confirm(nr?`Faltam ${nr} sem resposta. Finalizar mesmo assim?`:'Finalizar o simulado?'))return;
+ let n=0;const pm={1:[0,0],2:[0,0],3:[0,0],4:[0,0]},err=[];
+ S.qs.forEach(x=>{const ok=x.r!==null&&x.alts[x.r]===x.q.correta;pm[x.q.modulo][1]++;if(ok){n++;pm[x.q.modulo][0]++}else{err.push(x);const c=P.c[x.q.id]||{box:0,n:0,ok:0};c.n++;c.box=0;c.due=P.t+1;c.last=false;P.c[x.q.id]=c}});
+ P.sim=P.sim||[];P.sim.push({d:Date.now(),n});save();
+ const ap=n>=20,nm={1:'Placas, Cores e Caminhos',2:'Escolhas e Consequências',3:'Na Direção da Segurança',4:'Cuidar, Agir e Preservar'};
+ let h=`<div class="card2 big ${ap?'ap':'rp'}"><div class=nota>${n}/30</div><div class=sit>${ap?'✅ APROVADA':'❌ REPROVADA'}</div><div class=src>Mínimo: 20 acertos</div></div><div class=card2><h3>Acertos por módulo</h3>`+
+  [1,2,3,4].map(m=>`<div class=st><span>${m}. ${nm[m]}</span><b>${pm[m][0]}/${pm[m][1]}</b></div>`).join('')+`</div><h3>Revisão das erradas (${err.length})</h3>`;
+ h+=err.map((x,k)=>`<div class=card2><div class=meta>Módulo ${x.q.modulo} · ${x.q.nivel}${x.q.codigo_placa?' · placa '+x.q.codigo_placa:''}</div><p class=en>${esc(x.q.enunciado)}</p><p class=bad2>Sua resposta: ${x.r===null?'(em branco)':esc(x.alts[x.r])}</p><p class=ok2>Correta: ${esc(x.q.correta)}</p><p id=com>${esc(x.q.comentario)}</p><button class="ghost simia" data-k=${k}>🤖 Perguntar à IA</button><div class=iam hidden style="font-size:14px;color:#1a9a4a;text-align:center"></div></div>`).join('');
+ h+=`<button id="simAgain" class="primary">Novo simulado</button><p class=src>Erradas voltam para o nível 0 da revisão no modo Estudar.</p>`;
+ $('simRun').hidden=true;const R=$('simRes');R.innerHTML=h;R.hidden=false;scrollTo(0,0);
+ R.querySelectorAll('.simia').forEach(b=>b.onclick=()=>{const x=err[+b.dataset.k];askIA(iaText(x.q,x.alts,x.r===null?'não respondi':x.alts[x.r]),b.nextElementSibling)});
+ $('simAgain').onclick=simStart;S=null}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('simGo').onclick=simStart;$('simPrev').onclick=()=>{S.i--;simShow()};$('simNext').onclick=()=>{S.i++;simShow()};$('simFim').onclick=simEnd;
