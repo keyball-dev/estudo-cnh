@@ -22,7 +22,7 @@ function stats(){const cs=Object.values(P.c),n=cs.reduce((s,c)=>s+c.n,0),ok=cs.r
  const H=(P.sim||[]).slice(-10).reverse().map(s=>`<div class=st><span>${new Date(s.d).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${s.t=='dif'?'Dificuldades':'Igual à prova'}</span><b style="color:${s.n>=20?'#1a9a4a':'#c62828'}">${s.n}/30</b></div>`).join('')||'<p class=src>Nenhum simulado ainda.</p>';
  const per=[1,2,3,4].map(m=>{const ids=Q.filter(q=>q.modulo==m);const d=ids.filter(q=>P.c[q.id]&&P.c[q.id].box>=3).length;return `<div class=st><span>Módulo ${m}</span><b>${d}/${ids.length}</b></div>`}).join('');
  $('sbox').innerHTML=`<div class=st><span>Respostas dadas</span><b>${n}</b></div><div class=st><span>Questões vistas</span><b>${cs.length}/${Q.length}</b></div><div class=st><span>% de acerto</span><b>${n?Math.round(ok*100/n):0}%</b></div><div class=st><span>Dominadas (caixa ≥3)</span><b>${dom}</b></div>`+per+'<h3>Simulados</h3>'+H}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x==b));['quiz','sim','stats'].forEach(v=>$(v).hidden=b.dataset.v!=v);if(b.dataset.v=='stats'){stats();$('sName').value=nome()}if(b.dataset.v=='sim'&&!S){simInfo();$('simStart').hidden=false}});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x==b));['quiz','sim','stats'].forEach(v=>$(v).hidden=b.dataset.v!=v);if(b.dataset.v=='stats'){stats();$('sName').value=nome();fillLinks()}if(b.dataset.v=='sim'&&!S){simInfo();$('simStart').hidden=false}});
 $('naosei').onclick=()=>answer(null);$('next').onclick=show;$('mod').onchange=()=>{localStorage.cnh_mod=mod();show()};
 $('reset').onclick=()=>{if(confirm('Apagar todo o progresso?')){P={t:0,c:{}};save();stats()}};
 (async()=>{load();[Q,PL]=await Promise.all([fetch('questions.json').then(r=>r.json()),fetch('placas.json').then(r=>r.json()).catch(()=>({}))]);
@@ -33,8 +33,28 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 function iaText(q=cur,alts=[...document.querySelectorAll('#alts .alt')].map(x=>x.textContent),mk=marc){alts=alts.map((x,i)=>`${'ABCD'[i]}) ${x}`).join('\n');const marc_=mk;
  return `Estou estudando para a prova teórica da CNH. Me explique de forma simples esta questão do Banco Nacional de Questões:\n\nPergunta: ${q.enunciado}\n`+(q.codigo_placa?`Código da placa: ${q.codigo_placa}\n`:'')+`\nAlternativas:\n${alts}\n\nMinha resposta: ${marc_}\nResposta correta: ${q.correta}\nComentário oficial: ${q.comentario}`}
 async function copy(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity=0;document.body.append(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}}
-function askIA(t,m){window.open('https://grok.com/?q='+encodeURIComponent(t),'_blank');copy(t);m.textContent='Pergunta copiada — se não aparecer, cole no Grok';m.hidden=false}
-$('ia').onclick=()=>{const t=iaText();window.open('https://grok.com/?q='+encodeURIComponent(t),'_blank');copy(t);const m=$('iamsg');m.textContent='Pergunta copiada — se não aparecer, cole no Grok';m.hidden=false};
+const IAS={grok:{n:'Grok',url:t=>'https://grok.com/?q='+encodeURIComponent(t),dom:['grok.com','x.com']},gemini:{n:'Gemini',url:()=>'https://gemini.google.com/app',dom:['gemini.google.com','g.co']},chatgpt:{n:'ChatGPT',url:t=>'https://chatgpt.com/?q='+encodeURIComponent(t),dom:['chatgpt.com']}};
+const lk=ai=>localStorage['cnh_chat_'+ai]||'';let pendSave=null,pendArm=false;
+function validLink(ai,v){try{const u=new URL(v.trim());if(u.protocol!='https:')return false;return IAS[ai].dom.some(d=>u.hostname==d||u.hostname.endsWith('.'+d))}catch(e){return false}}
+function iaMsg(m,s){m.textContent=s;m.hidden=false}
+function iaGo(ai,t,m,mode){copy(t);localStorage.cnh_ia_last=ai;$('iaSheet').hidden=true;const I=IAS[ai];
+ if(mode=='saved'){window.open(lk(ai),'_blank');iaMsg(m,'Pergunta copiada — cole no chat e envie');return}
+ window.open(I.url(t),'_blank');iaMsg(m,ai=='gemini'?'Pergunta copiada — cole no Gemini e envie':'Pergunta copiada — se não aparecer, cole no '+I.n);
+ if(!lk(ai)){pendSave=ai;pendArm=false;setTimeout(()=>pendArm=true,400)}}
+function askIA(t,m){const last=localStorage.cnh_ia_last,B=$('iaBtns');$('iaTitle').textContent='Perguntar a qual IA?';B.innerHTML='';
+ Object.keys(IAS).forEach(ai=>{const b=document.createElement('button');b.className='iab'+(ai==last?' last':'');b.dataset.ai=ai;b.innerHTML=IAS[ai].n+(lk(ai)?' <small>· chat salvo</small>':'')+(ai==last?' <small>· última usada</small>':'');
+  b.onclick=()=>lk(ai)?savedMenu(ai,t,m):iaGo(ai,t,m,'new');B.append(b)});$('iaSheet').hidden=false}
+function savedMenu(ai,t,m){const B=$('iaBtns');$('iaTitle').textContent=IAS[ai].n;B.innerHTML='';
+ [['Continuar no meu chat','main',()=>iaGo(ai,t,m,'saved')],['Abrir chat novo','',()=>{iaGo(ai,t,m,'new')}],['Trocar chat salvo','',()=>{copy(t);$('iaSheet').hidden=true;showSave(ai)}]].forEach(([l,c,f])=>{const b=document.createElement('button');b.className='iab '+c;b.textContent=l;b.dataset.opt=l;b.onclick=f;B.append(b)})}
+function showSave(ai){pendSave=ai;$('scLink').value=lk(ai);$('scErr').textContent='';$('saveCard').hidden=false;$('saveCard').querySelector('h3').textContent=lk(ai)?'Trocar o chat salvo ('+IAS[ai].n+')':'Quer continuar sempre nessa conversa?'}
+function onBack(){if(document.visibilityState=='visible'&&pendSave&&pendArm&&$('saveCard').hidden){const ai=pendSave;pendArm=false;showSave(ai)}}
+document.addEventListener('visibilitychange',onBack);window.addEventListener('focus',onBack);
+$('iaClose').onclick=()=>$('iaSheet').hidden=true;
+$('scNo').onclick=()=>{$('saveCard').hidden=true;pendSave=null};
+$('scSave').onclick=()=>{const ai=pendSave,v=$('scLink').value.trim();if(!validLink(ai,v)){$('scErr').textContent='Link inválido para '+IAS[ai].n+' (use '+IAS[ai].dom.join(' ou ')+').';return}localStorage['cnh_chat_'+ai]=v;$('saveCard').hidden=true;pendSave=null};
+function fillLinks(){Object.keys(IAS).forEach(ai=>$('lk_'+ai).value=lk(ai))}
+$('lkSave').onclick=()=>{const bad=[];Object.keys(IAS).forEach(ai=>{const v=$('lk_'+ai).value.trim();if(!v)localStorage.removeItem('cnh_chat_'+ai);else if(validLink(ai,v))localStorage['cnh_chat_'+ai]=v;else bad.push(IAS[ai].n)});$('lkMsg').textContent=bad.length?'Link inválido: '+bad.join(', '):'Salvo ✓'};
+$('ia').onclick=()=>askIA(iaText(),$('iamsg'));
 
 // ===== Simulado =====
 const SIM_PROP={1:8,2:4,3:13,4:5};let S=null;
