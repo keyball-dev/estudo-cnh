@@ -1,0 +1,8 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Estudo CNH</title><meta name="theme-color" content="#0b5cad"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon.svg"><link rel="stylesheet" href="style.css"></head>
+<body><header><h1>🚗 Estudo CNH</h1><nav><button data-v="quiz" class="on">Estudar</button><button data-v="stats">Estatísticas</button></nav></header>
+<main id="quiz"><div class="bar"><select id="mod"><option value="0">Todos os módulos</option></select><span id="due"></span></div>
+<div id="card"><div class="meta" id="meta"></div><img id="placa" alt="placa"><p id="enun"></p><div id="alts"></div>
+<button id="naosei" class="ghost">Não sei — ver resposta</button><div id="fb" hidden><div id="res"></div><p id="com"></p><button id="ia" class="ghost">🤖 Perguntar à IA</button><div id="iamsg" hidden style="font-size:14px;color:#1a9a4a;text-align:center"></div><button id="next" class="primary">Próxima →</button></div></div></main>
+<main id="stats" hidden><div id="sbox"></div><button id="reset" class="danger">Resetar progresso</button><p class="src">Fonte: Banco Nacional de Questões v1.0 – Senatran / CNH do Brasil.</p></main>
+<script src="app.js"></script></body></html>
