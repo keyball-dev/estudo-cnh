@@ -17,3 +17,7 @@ main{padding:14px;max-width:640px;margin:auto}.bar{display:flex;gap:8px;align-it
 #welcome{position:fixed;inset:0;z-index:10;background:#0b5cad;display:flex;align-items:center;justify-content:center;padding:20px}#welcome[hidden]{display:none}.wbox{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:420px;text-align:center}
 input[type=text],#wName,#sName{width:100%;font-size:20px;padding:14px;border:2px solid #c7d0db;border-radius:12px;margin:8px 0}#sName{margin:0;flex:2}
 .modes label{display:block;border:2px solid #d6dde6;border-radius:12px;padding:12px;margin:8px 0}.modes label.dis{opacity:.5}.modes input{transform:scale(1.3);margin-right:6px}
+#iaSheet,#saveCard{position:fixed;inset:0;z-index:20;background:#0007;display:flex;align-items:flex-end;justify-content:center}#iaSheet[hidden],#saveCard[hidden]{display:none}
+.sheet{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 16px 26px}.sheet input{width:100%;font-size:17px;padding:12px;border:2px solid #c7d0db;border-radius:12px}
+.iab{display:block;width:100%;padding:15px;margin:8px 0;border:2px solid #d6dde6;border-radius:12px;background:#fff;font-size:18px;font-weight:600;text-align:left;color:inherit}.iab.last{border-color:#0b5cad;background:#e6f0fb}.iab.main{background:#0b5cad;color:#fff;border-color:#0b5cad}.iab small{font-weight:400;opacity:.75}
+.lk{display:block;font-weight:600;margin:8px 0}.lk input{display:block;width:100%;font-size:16px;padding:11px;border:2px solid #c7d0db;border-radius:12px;margin-top:4px}
